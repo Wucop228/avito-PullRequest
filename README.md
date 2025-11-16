@@ -18,11 +18,6 @@
 
 ### 1. Подготовить окружение
 
-Установите:
-
-- Docker
-- Docker Compose
-
 Скопируйте пример конфига:
 
 ```bash
@@ -39,7 +34,7 @@ cp .env.example .env
 ### 2. Запуск сервиса
 
 ```bash
-make up   # (docker compose up -d)
+make up   # (docker-compose up -d)
 ```
 
 Будет запущено три сервиса:
@@ -55,7 +50,7 @@ make up   # (docker compose up -d)
 ### 3. Остановка
 
 ```bash
-make down   # (docker compose down)
+make down   # (docker-compose down)
 ```
 
 ---
