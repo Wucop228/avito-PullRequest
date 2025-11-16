@@ -47,10 +47,18 @@ func main() {
 	userSvc := service.NewUserService(db)
 	userHandler := http.NewUserHandler(userSvc)
 
+	prSvc := service.NewPullRequestService(db)
+	prHandler := http.NewPullRequestHandler(prSvc)
+
 	e.POST("/team/add", teamHandler.TeamAdd)
 	e.GET("/team/get", teamHandler.TeamGet)
 
 	e.POST("/users/setIsActive", userHandler.SetIsActive)
+	e.GET("/users/getReview", prHandler.GetUserReviews)
+
+	e.POST("/pullRequest/create", prHandler.Create)
+	e.POST("/pullRequest/merge", prHandler.Merge)
+	e.POST("/pullRequest/reassign", prHandler.Reassign)
 
 	if err := e.Start(fmt.Sprintf(":%s", cfg.Server.Port)); err != nil {
 		log.Fatal(err)
