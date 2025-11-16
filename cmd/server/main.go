@@ -44,8 +44,13 @@ func main() {
 	teamSvc := service.NewTeamService(db)
 	teamHandler := http.NewTeamHandler(teamSvc)
 
+	userSvc := service.NewUserService(db)
+	userHandler := http.NewUserHandler(userSvc)
+
 	e.POST("/team/add", teamHandler.TeamAdd)
 	e.GET("/team/get", teamHandler.TeamGet)
+
+	e.POST("/users/setIsActive", userHandler.SetIsActive)
 
 	if err := e.Start(fmt.Sprintf(":%s", cfg.Server.Port)); err != nil {
 		log.Fatal(err)
