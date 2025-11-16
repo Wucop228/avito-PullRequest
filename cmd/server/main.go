@@ -1,66 +1,52 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/labstack/echo/v4"
-	_ "github.com/lib/pq"
-
+	"github.com/Wucop228/avito-PullRequest/internal/app"
 	"github.com/Wucop228/avito-PullRequest/internal/config"
-	"github.com/Wucop228/avito-PullRequest/internal/delivery/http"
-	"github.com/Wucop228/avito-PullRequest/internal/service"
 )
 
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to load config: %v", err)
 	}
 
-	connStr := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.Host,
-		cfg.DB.Port,
-		cfg.DB.Name,
-		cfg.DB.SSLMode,
-	)
-
-	db, err := sql.Open("postgres", connStr)
+	application, err := app.NewApp(cfg)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+		log.Fatalf("failed to init app: %v", err)
 	}
 
-	e := echo.New()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	teamSvc := service.NewTeamService(db)
-	teamHandler := http.NewTeamHandler(teamSvc)
+	errCh := make(chan error, 1)
+	go func() {
+		if err := application.RunHTTP(); err != nil {
+			errCh <- err
+		}
+	}()
 
-	userSvc := service.NewUserService(db)
-	userHandler := http.NewUserHandler(userSvc)
+	select {
+	case <-ctx.Done():
+		log.Printf("shutdown signal received, shutting down gracefully")
+	case err := <-errCh:
+		if err != nil {
+			log.Printf("server error: %v", err)
+		}
+	}
 
-	prSvc := service.NewPullRequestService(db)
-	prHandler := http.NewPullRequestHandler(prSvc)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	e.POST("/team/add", teamHandler.TeamAdd)
-	e.GET("/team/get", teamHandler.TeamGet)
-
-	e.POST("/users/setIsActive", userHandler.SetIsActive)
-	e.GET("/users/getReview", prHandler.GetUserReviews)
-
-	e.POST("/pullRequest/create", prHandler.Create)
-	e.POST("/pullRequest/merge", prHandler.Merge)
-	e.POST("/pullRequest/reassign", prHandler.Reassign)
-
-	if err := e.Start(fmt.Sprintf(":%s", cfg.Server.Port)); err != nil {
-		log.Fatal(err)
+	if err := application.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown failed: %v", err)
+	} else {
+		log.Println("server stopped gracefully")
 	}
 }
