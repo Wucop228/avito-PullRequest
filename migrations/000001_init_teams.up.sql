@@ -1,0 +1,4 @@
+CREATE TABLE teams (
+    id   BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);

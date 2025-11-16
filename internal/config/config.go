@@ -33,7 +33,10 @@ func getEnv(key, def string) string {
 }
 
 func LoadConfig() (*Config, error) {
-	_ = godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Warning: .env file not found, using environment variables")
+	}
 
 	cfg := &Config{
 		DB: DBConfig{
